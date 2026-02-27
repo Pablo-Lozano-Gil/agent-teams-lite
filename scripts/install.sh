@@ -59,7 +59,12 @@ install_skills() {
     for skill_dir in "$SKILLS_SRC"/sdd-*/; do
         local skill_name
         skill_name=$(basename "$skill_dir")
-        mkdir -p "$target_dir/$skill_name"
+        mkdir -p "$target_dir/$skill_name" 2>/dev/null || {
+            chmod u+w "$target_dir/$skill_name"
+        }
+        if [ -f "$target_dir/$skill_name/SKILL.md" ]; then
+            chmod u+w "$target_dir/$skill_name/SKILL.md"
+        fi
         cp "$skill_dir/SKILL.md" "$target_dir/$skill_name/SKILL.md"
         print_skill "$skill_name"
         count=$((count + 1))
