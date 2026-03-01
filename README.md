@@ -367,9 +367,31 @@ Each sub-agent is a SKILL.md file — pure Markdown instructions that any AI ass
 | **Spec Writer** | `sdd-spec/SKILL.md` | Writes delta specs (ADDED/MODIFIED/REMOVED) with Given/When/Then |
 | **Designer** | `sdd-design/SKILL.md` | Creates `design.md` with architecture decisions and rationale |
 | **Task Planner** | `sdd-tasks/SKILL.md` | Breaks down into phased, numbered task checklist |
-| **Implementer** | `sdd-apply/SKILL.md` | Writes code following specs and design, marks tasks complete |
-| **Verifier** | `sdd-verify/SKILL.md` | Checks completeness, correctness, and coherence |
+| **Implementer** | `sdd-apply/SKILL.md` | Writes code following specs and design, marks tasks complete. v2.0: TDD workflow support |
+| **Verifier** | `sdd-verify/SKILL.md` | Validates implementation against specs with real test execution. v2.0: spec compliance matrix |
 | **Archiver** | `sdd-archive/SKILL.md` | Merges delta specs into main specs, moves to archive |
+
+### Shared Conventions
+
+All 9 skills reference three shared convention files in `skills/_shared/` instead of inlining persistence logic. This removes duplication and ensures consistent behavior across the entire workflow.
+
+| File | Purpose |
+|------|---------|
+| `persistence-contract.md` | Mode resolution rules — how `engram`, `openspec`, and `none` modes behave, what each mode reads/writes, and the fallback policy |
+| `engram-convention.md` | Deterministic artifact naming (`sdd/{change-name}/{artifact-type}`), two-step recovery protocol (search then get full content), and write/update patterns via `topic_key` upserts |
+| `openspec-convention.md` | Filesystem paths for each artifact, directory structure, config.yaml reference, and archive layout |
+
+**Why they exist:**
+- **DRY** — Previously each skill inlined its own persistence logic (~224 lines of duplication across 9 skills). Now each skill references the shared files.
+- **Deterministic recovery** — Engram artifact naming follows a strict `sdd/{change}/{type}` convention with `topic_key`, so any skill can reliably find artifacts created by other skills without fuzzy search.
+- **Consistent mode behavior** — All skills resolve `engram | openspec | none` the same way. `openspec` is never chosen automatically.
+
+### v2.0 Skill Upgrades
+
+Two skills received major upgrades:
+
+- **sdd-apply v2.0** — Added TDD workflow support. When enabled (via `openspec/config.yaml` or orchestrator config), the implementer follows a RED-GREEN-REFACTOR cycle: write a failing test first, implement until it passes, then refactor. Controlled by `tdd: true` and `test_command` in config.
+- **sdd-verify v2.0** — Now performs real test execution instead of static analysis only. Runs the project's test suite and build commands, produces a spec compliance matrix mapping each requirement to PASS/FAIL/SKIP, and reports issues at CRITICAL/WARNING/SUGGESTION severity levels. Configurable via `test_command`, `build_command`, and `coverage_threshold`.
 
 ---
 
@@ -639,15 +661,19 @@ This means:
 agent-teams-lite/
 ├── README.md                          ← You are here
 ├── LICENSE
-├── skills/                            ← The 9 sub-agent skill files
+├── skills/                            ← The 9 sub-agent skill files + shared conventions
+│   ├── _shared/                       ← Shared conventions (referenced by all skills)
+│   │   ├── persistence-contract.md    ← Mode resolution rules (engram/openspec/none)
+│   │   ├── engram-convention.md       ← Deterministic naming & recovery protocol
+│   │   └── openspec-convention.md     ← File paths, directory structure, config reference
 │   ├── sdd-init/SKILL.md
 │   ├── sdd-explore/SKILL.md
 │   ├── sdd-propose/SKILL.md
 │   ├── sdd-spec/SKILL.md
 │   ├── sdd-design/SKILL.md
 │   ├── sdd-tasks/SKILL.md
-│   ├── sdd-apply/SKILL.md
-│   ├── sdd-verify/SKILL.md
+│   ├── sdd-apply/SKILL.md             ← v2.0: TDD workflow support
+│   ├── sdd-verify/SKILL.md            ← v2.0: Real test execution + spec compliance matrix
 │   └── sdd-archive/SKILL.md
 ├── examples/                          ← Config examples per tool
 │   ├── claude-code/CLAUDE.md

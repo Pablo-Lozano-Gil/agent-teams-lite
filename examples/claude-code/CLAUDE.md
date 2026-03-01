@@ -82,6 +82,24 @@ These rules define what the ORCHESTRATOR (lead/coordinator) does. Sub-agents are
 
 **Sub-agents have FULL access** — they read source code, write code, run commands, and follow the user's coding skills (TDD workflows, framework conventions, testing patterns, etc.).
 
+### Engram Artifact Convention
+
+When using `engram` mode, ALL SDD artifacts MUST follow this deterministic naming:
+
+```
+title:     sdd/{change-name}/{artifact-type}
+topic_key: sdd/{change-name}/{artifact-type}
+type:      architecture
+project:   {detected project name}
+```
+
+Artifact types: `explore`, `proposal`, `spec`, `design`, `tasks`, `apply-progress`, `verify-report`, `archive-report`
+Project init uses: `sdd-init/{project-name}`
+
+**Recovery is ALWAYS two steps** (search results are truncated):
+1. `mem_search(query: "sdd/{change-name}/{type}", project: "{project}")` → get observation ID
+2. `mem_get_observation(id)` → get full untruncated content
+
 ### Sub-Agent Launching Pattern
 
 When launching a sub-agent via Task tool:
@@ -96,13 +114,13 @@ Task(
   - Project: {project path}
   - Change: {change-name}
   - Artifact store mode: {engram|openspec|none}
-  - Config: {path to openspec/config.yaml}
-  - Previous artifacts: {list of paths to read}
+  - Config: {path to openspec/config.yaml if openspec mode}
+  - Previous artifact IDs: {list of Engram observation IDs if engram mode}
 
   TASK:
   {specific task description}
 
-  Return structured output with: status, executive_summary, detailed_report(optional), artifacts, next_recommended, risks.'
+  Return structured output with: status, executive_summary, detailed_report(optional), artifacts (include Engram IDs), next_recommended, risks.'
 )
 ```
 
