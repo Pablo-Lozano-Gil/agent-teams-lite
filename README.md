@@ -57,14 +57,16 @@ The workflow engine is storage-agnostic. Artifacts can be persisted in:
 
 - `engram` (recommended default) — https://github.com/gentleman-programming/engram
 - `openspec` (file-based, optional)
+- `hybrid` (both Engram + OpenSpec simultaneously)
 - `none` (ephemeral, no persistence)
 
 Default policy is conservative:
 
 - If Engram is available, persist to Engram (recommended)
 - If user explicitly asks for file artifacts, use `openspec`
+- If user wants both cross-session recovery AND local files, use `hybrid`
 - Otherwise use `none` (no writes)
-- `openspec` is NEVER chosen automatically — only when the user explicitly asks
+- `openspec` and `hybrid` are NEVER chosen automatically — only when the user explicitly asks
 
 ### Quick Modes
 
@@ -86,6 +88,12 @@ artifact_store:
 # File artifacts in project (OpenSpec flow)
 artifact_store:
   mode: openspec
+```
+
+```yaml
+# Both backends: cross-session recovery + local files (uses more tokens)
+artifact_store:
+  mode: hybrid
 ```
 
 ---
@@ -126,7 +134,7 @@ graph TB
         L2_Orch -->|"DAG phase"| L2_Verify
         L2_Orch -->|"DAG phase"| L2_Archive
         
-        L2_Store[("Pluggable Store<br/>engram | openspec | none")]
+        L2_Store[("Pluggable Store<br/>engram | openspec | hybrid | none")]
         L2_Spec -.->|"persist"| L2_Store
         L2_Design -.->|"persist"| L2_Store
         L2_Apply -.->|"persist"| L2_Store
@@ -238,7 +246,7 @@ Each sub-agent should return a structured payload with variable depth:
   "artifacts": [
     {
       "name": "design",
-      "store": "engram | openspec | none",
+      "store": "engram | openspec | hybrid | none",
       "ref": "observation-id | file-path | null"
     }
   ],
@@ -390,14 +398,14 @@ All 9 skills reference three shared convention files in `skills/_shared/` instea
 
 | File | Purpose |
 |------|---------|
-| `persistence-contract.md` | Mode resolution rules — how `engram`, `openspec`, and `none` modes behave, what each mode reads/writes, and the fallback policy |
+| `persistence-contract.md` | Mode resolution rules — how `engram`, `openspec`, `hybrid`, and `none` modes behave, what each mode reads/writes, and the fallback policy |
 | `engram-convention.md` | Deterministic artifact naming (`sdd/{change-name}/{artifact-type}`), two-step recovery protocol (search then get full content), and write/update patterns via `topic_key` upserts |
 | `openspec-convention.md` | Filesystem paths for each artifact, directory structure, config.yaml reference, and archive layout |
 
 **Why they exist:**
 - **DRY** — Previously each skill inlined its own persistence logic (~224 lines of duplication across 9 skills). Now each skill references the shared files.
 - **Deterministic recovery** — Engram artifact naming follows a strict `sdd/{change}/{type}` convention with `topic_key`, so any skill can reliably find artifacts created by other skills without fuzzy search.
-- **Consistent mode behavior** — All skills resolve `engram | openspec | none` the same way. `openspec` is never chosen automatically.
+- **Consistent mode behavior** — All skills resolve `engram | openspec | hybrid | none` the same way. `openspec` and `hybrid` are never chosen automatically.
 
 ### v2.0 Skill Upgrades
 
@@ -678,7 +686,7 @@ agent-teams-lite/
 ├── LICENSE
 ├── skills/                            ← The 9 sub-agent skill files + shared conventions
 │   ├── _shared/                       ← Shared conventions (referenced by all skills)
-│   │   ├── persistence-contract.md    ← Mode resolution rules (engram/openspec/none)
+│   │   ├── persistence-contract.md    ← Mode resolution rules (engram/openspec/hybrid/none)
 │   │   ├── engram-convention.md       ← Deterministic naming & recovery protocol
 │   │   └── openspec-convention.md     ← File paths, directory structure, config reference
 │   ├── sdd-init/SKILL.md
