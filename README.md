@@ -305,21 +305,33 @@ openspec/
 
 ## Quick Start
 
-### 1. Install the skills
+### 1. Run the setup script
 
 ```bash
 git clone https://github.com/gentleman-programming/agent-teams-lite.git
 cd agent-teams-lite
-./scripts/install.sh
+./scripts/setup.sh
 ```
 
-The installer asks which tool you use and copies skills to the right location.
+That's it. The script auto-detects your installed agents, copies skills, and configures orchestrator prompts — all in one step. Safe to run multiple times (idempotent).
 
-### 2. Add the orchestrator to your agent
+Options:
+```bash
+./scripts/setup.sh --all              # Auto-detect + install all (no prompts)
+./scripts/setup.sh --agent claude-code # Install for a specific agent
+./scripts/setup.sh --non-interactive  # For external installers (e.g. gentle-ai)
+```
 
-See [Installation](#installation) for your specific tool.
+Windows PowerShell:
+```powershell
+.\scripts\setup.ps1              # Interactive
+.\scripts\setup.ps1 -All         # Auto-detect + install all
+.\scripts\setup.ps1 -Agent opencode  # Specific agent
+```
 
-### 3. Use it
+> **Skills only?** Use `./scripts/install.sh` if you just want to copy skills without configuring orchestrator prompts.
+
+### 2. Use it
 
 Open your AI assistant in any project and say:
 
@@ -345,9 +357,11 @@ We publish versioned release notes on GitHub:
 
 Latest release:
 
+- `v3.3.5` — Full setup scripts (`setup.sh` / `setup.ps1`): auto-detect agents + install skills + configure orchestrator prompts in one step.
+- `v3.3.4` — Installer fixes: skill-registry included, correct VS Code path.
+- `v3.3.3` — Multi-directory skill scanning + correct agent paths from gentle-ai.
+- `v3.3.2` — Index file expansion in skill registry + README overhaul.
 - `v3.3.1` — Skill registry skill, engram-first discovery, inline persistence in all skills.
-- `v3.3.0` — Mandatory persist steps, initial skill registry, knowledge persistence for non-SDD sub-agents.
-- `v3.2.3` — Inline engram instructions in all skills and agent configs (fixes 3-hop file read chain bug).
 
 ---
 
@@ -470,11 +484,38 @@ Sub-agents start with a **fresh context** — they don't know what user skills e
 - All sub-agents load the skill registry as **Step 1** — they now know about your coding skills (React, TDD, Playwright, etc.) and project conventions.
 - Engram-first + `.atl/skill-registry.md` fallback — works with or without engram.
 
+**v3.3.5 — Full Setup Scripts:**
+- New `setup.sh` (Unix) and `setup.ps1` (Windows) that auto-detect agents, install skills, AND configure orchestrator prompts in one command.
+- Idempotent with HTML comment markers — safe to run multiple times.
+- `--non-interactive` mode for external installers like [gentle-ai](https://github.com/gentleman-programming/gentleman-ai-installer).
+- OpenCode special handling: slash commands + JSON config merge.
+
 ---
 
 ## Installation
 
-Dedicated setup guides for all supported tools:
+The recommended way to install is the **setup script** — it handles everything (skills + orchestrator prompts) in one step:
+
+```bash
+./scripts/setup.sh        # Interactive: detects agents, asks which to set up
+./scripts/setup.sh --all  # Auto-detect + install all (no prompts)
+```
+
+Windows PowerShell:
+```powershell
+.\scripts\setup.ps1       # Interactive
+.\scripts\setup.ps1 -All  # Auto-detect + install all
+```
+
+The setup script:
+- Detects installed agents via PATH (`claude`, `opencode`, `gemini`, `cursor`, `code`, `codex`)
+- Copies skills to the correct user-level directory
+- Configures orchestrator prompts with idempotent markers (safe to re-run)
+- Handles OpenCode's special case (commands + JSON config merge)
+
+> **For external installers** (e.g. [gentle-ai](https://github.com/gentleman-programming/gentleman-ai-installer)): use `--non-interactive` flag.
+
+Below are per-tool details for manual installation or reference.
 
 - [Claude Code](#claude-code) — Full sub-agent support via Task tool
 - [OpenCode](#opencode) — Full sub-agent support via Task tool
@@ -486,13 +527,14 @@ Dedicated setup guides for all supported tools:
 
 ### Claude Code
 
+> **Automatic:** `./scripts/setup.sh --agent claude-code` handles all steps below.
+
+<details>
+<summary>Manual installation</summary>
+
 **1. Copy skills:**
 
 ```bash
-# Using the install script
-./scripts/install.sh  # Choose option 1: Claude Code
-
-# Or manually
 cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.claude/skills/
 ```
 
@@ -500,31 +542,24 @@ cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.claude/skills/
 
 Append the contents of [`examples/claude-code/CLAUDE.md`](examples/claude-code/CLAUDE.md) to your existing `CLAUDE.md`.
 
-The example is intentionally lean to avoid token bloat in always-loaded system prompts. Critical engram calls are inlined in each skill file.
+The example is intentionally lean to avoid token bloat in always-loaded system prompts. Critical engram calls are inlined in each skill file. This keeps your existing assistant identity and adds SDD as an orchestration overlay.
 
-This keeps your existing assistant identity and adds SDD as an orchestration overlay.
+</details>
 
-The orchestrator instructions teach Claude Code to:
-- Detect SDD triggers (`/sdd-new`, feature descriptions, etc.)
-- Launch sub-agents via the Task tool
-- Pass skill file paths so sub-agents read their instructions
-- Track state between phases
-
-**3. Verify:**
-
-Open Claude Code and type `/sdd-init` — it should recognize the command.
+**Verify:** Open Claude Code and type `/sdd-init` — it should recognize the command.
 
 ---
 
 ### OpenCode
 
+> **Automatic:** `./scripts/setup.sh --agent opencode` handles all steps below.
+
+<details>
+<summary>Manual installation</summary>
+
 **1. Copy skills and commands:**
 
 ```bash
-# Using the install script (installs both skills + commands)
-./scripts/install.sh  # Choose option 2: OpenCode
-
-# Or manually
 cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.config/opencode/skills/
 cp examples/opencode/commands/sdd-*.md ~/.config/opencode/commands/
 ```
@@ -533,37 +568,31 @@ cp examples/opencode/commands/sdd-*.md ~/.config/opencode/commands/
 
 Merge the `agent` block from [`examples/opencode/opencode.json`](examples/opencode/opencode.json) into your existing config.
 
-You can either:
-- **Add it to your existing agent** (e.g., append SDD orchestrator instructions to your primary agent's prompt)
-- **Create a dedicated agent** (copy the `sdd-orchestrator` agent definition as-is)
-
-Recommended OpenCode setup:
+Recommended setup:
 - Keep your everyday assistant (e.g., `gentleman`) as `primary`
 - Set `sdd-orchestrator` to `all`
 - Select `sdd-orchestrator` only when you want SDD workflows
 
-**3. Verify:**
+</details>
 
-Open OpenCode and type `/sdd-init` — it should recognize the command.
-
-How to use in OpenCode:
+**How to use in OpenCode:**
 - Start OpenCode in your project: `opencode .`
 - Use the agent picker (Tab) and choose `sdd-orchestrator`
 - Run SDD commands: `/sdd-init`, `/sdd-new <name>`, `/sdd-apply`, etc.
-- Commands are installed at `~/.config/opencode/commands/` and auto-discovered by OpenCode
 - Switch back to your normal agent (Tab) for day-to-day coding
 
 ---
 
 ### Gemini CLI
 
+> **Automatic:** `./scripts/setup.sh --agent gemini-cli` handles all steps below.
+
+<details>
+<summary>Manual installation</summary>
+
 **1. Copy skills:**
 
 ```bash
-# Using the install script
-./scripts/install.sh  # Choose Gemini CLI option
-
-# Or manually
 cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.gemini/skills/
 ```
 
@@ -573,90 +602,77 @@ Append the contents of [`examples/gemini-cli/GEMINI.md`](examples/gemini-cli/GEM
 
 Make sure `GEMINI_SYSTEM_MD=1` is set in `~/.gemini/.env` so Gemini loads the system prompt.
 
-**3. Verify:**
+</details>
 
-Open Gemini CLI and type `/sdd-init` — it should recognize the command.
+**Verify:** Open Gemini CLI and type `/sdd-init`.
 
-> **Note:** Gemini CLI doesn't have a native Task tool for sub-agent delegation. The skills work as inline instructions — the orchestrator reads them directly rather than spawning fresh-context sub-agents. For the best sub-agent experience, use Claude Code or OpenCode.
+> **Note:** Gemini CLI doesn't have a native Task tool for sub-agent delegation. The skills work as inline instructions. For the best sub-agent experience, use Claude Code or OpenCode.
 
 ---
 
 ### Codex
 
+> **Automatic:** `./scripts/setup.sh --agent codex` handles all steps below.
+
+<details>
+<summary>Manual installation</summary>
+
 **1. Copy skills:**
 
 ```bash
-# Using the install script
-./scripts/install.sh  # Choose Codex option
-
-# Or manually
 cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.codex/skills/
 ```
 
 **2. Add orchestrator instructions:**
 
-Add the orchestrator instructions to `~/.codex/agents.md` (or your `model_instructions_file` if configured).
+Append the contents of [`examples/codex/agents.md`](examples/codex/agents.md) to `~/.codex/agents.md` (or your `model_instructions_file` if configured).
 
-**3. Verify:**
+</details>
 
-Open Codex and type `/sdd-init`.
+**Verify:** Open Codex and type `/sdd-init`.
 
-> **Note:** Like Gemini CLI, Codex runs skills inline rather than as true sub-agents. The planning phases (proposal, spec, design, tasks) still work well; implementation batching is handled by the orchestrator instructions.
+> **Note:** Like Gemini CLI, Codex runs skills inline rather than as true sub-agents. The planning phases still work well; implementation batching is handled by the orchestrator instructions.
 
 ---
 
 ### VS Code (Copilot)
 
-VS Code supports MCP and custom instructions natively. The skills work with Copilot's agent mode and any MCP-compatible extension.
+> **Automatic:** `./scripts/setup.sh --agent vscode` handles all steps below.
+
+<details>
+<summary>Manual installation</summary>
 
 **1. Copy skills:**
 
 ```bash
-# Using the install script
-./scripts/install.sh  # Choose VS Code option
-
-# Or manually (global)
 cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.copilot/skills/
 ```
 
 **2. Add orchestrator instructions:**
 
-Create a VS Code `.instructions.md` file in the User prompts folder and append the orchestrator instructions from [`examples/vscode/copilot-instructions.md`](examples/vscode/copilot-instructions.md).
+Create a VS Code `.instructions.md` file in the User prompts folder with the orchestrator from [`examples/vscode/copilot-instructions.md`](examples/vscode/copilot-instructions.md).
 
-Recommended User prompt path:
-- macOS: `~/Library/Application Support/Code/User/prompts/sdd-orchestrator.instructions.md`
-- Linux: `~/.config/Code/User/prompts/sdd-orchestrator.instructions.md`
-- Windows: `%APPDATA%\Code\User\prompts\sdd-orchestrator.instructions.md`
+Prompt file paths:
+- macOS: `~/Library/Application Support/Code/User/prompts/agent-teams-lite.instructions.md`
+- Linux: `~/.config/Code/User/prompts/agent-teams-lite.instructions.md`
+- Windows: `%APPDATA%\Code\User\prompts\agent-teams-lite.instructions.md`
 
-Alternatively, use VS Code's custom instructions setting:
-1. Open Settings (`Cmd+,` / `Ctrl+,`)
-2. Search for `github.copilot.chat.codeGeneration.instructions`
-3. Add the SDD orchestrator instructions
+</details>
 
-If you also configure MCP at user level, use:
-- macOS: `~/Library/Application Support/Code/User/mcp.json`
-- Linux: `~/.config/Code/User/mcp.json`
-- Windows: `%APPDATA%\Code\User\mcp.json`
+**Verify:** Open VS Code, open the Chat panel (Ctrl+Cmd+I / Ctrl+Alt+I), and type `/sdd-init`.
 
-**3. Verify:**
-
-Open VS Code, open the Chat panel (Ctrl+Cmd+I / Ctrl+Alt+I), and type `/sdd-init`.
-
-> **Note:** VS Code Copilot supports agent mode with tool use. Skills work as context files. For true sub-agent delegation with fresh context windows, use Claude Code or OpenCode.
+> **Note:** VS Code Copilot supports agent mode with tool use. For true sub-agent delegation with fresh context windows, use Claude Code or OpenCode.
 
 ---
 
 ### Antigravity
 
-[Antigravity](https://antigravity.google) is Google's AI-first IDE with native skill support. It has its own skill and rule system separate from VS Code.
+[Antigravity](https://antigravity.google) is Google's AI-first IDE with native skill support. Not yet supported by the setup script — manual installation required.
 
 **1. Copy skills:**
 
 ```bash
 # Global (available across all projects)
-./scripts/install.sh  # Choose Antigravity option
-
-# Or manually (global)
 cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.gemini/antigravity/skills/
 
 # Workspace-specific (per project)
@@ -680,11 +696,16 @@ Open Antigravity and type `/sdd-init` in the agent panel.
 
 ### Cursor
 
-**1. Copy skills to project or global:**
+> **Automatic:** `./scripts/setup.sh --agent cursor` handles all steps below.
+
+<details>
+<summary>Manual installation</summary>
+
+**1. Copy skills:**
 
 ```bash
 # Global
-./scripts/install.sh  # Choose option 3: Cursor
+cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.cursor/skills/
 
 # Or per-project
 cp -r skills/_shared skills/sdd-* skills/skill-registry ./your-project/skills/
@@ -694,7 +715,9 @@ cp -r skills/_shared skills/sdd-* skills/skill-registry ./your-project/skills/
 
 Append the contents of [`examples/cursor/.cursorrules`](examples/cursor/.cursorrules) to your project's `.cursorrules` file.
 
-**Note:** Cursor doesn't have a Task tool for true sub-agent delegation. The skills still work — Cursor reads them as instructions — but the orchestrator runs inline rather than delegating to fresh-context sub-agents. For the best sub-agent experience, use Claude Code or OpenCode.
+</details>
+
+**Note:** Cursor doesn't have a Task tool for true sub-agent delegation. The skills still work — Cursor reads them as instructions — but the orchestrator runs inline. For the best sub-agent experience, use Claude Code or OpenCode.
 
 ---
 
@@ -766,7 +789,10 @@ agent-teams-lite/
 │   ├── antigravity/sdd-orchestrator.md
 │   └── cursor/.cursorrules
 └── scripts/
-    └── install.sh                     ← Interactive installer
+    ├── setup.sh                       ← Full setup: detect + install + configure (Unix)
+    ├── setup.ps1                      ← Full setup: detect + install + configure (Windows)
+    ├── install.sh                     ← Skills-only installer (Unix)
+    └── install.ps1                    ← Skills-only installer (Windows)
 
 # Generated in target projects (not in this repo):
 .atl/
