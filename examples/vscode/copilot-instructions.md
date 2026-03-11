@@ -121,7 +121,7 @@ Sub-agents retrieve full content via two steps:
 2. `mem_get_observation(id: {id})` → full content (REQUIRED — search results are truncated)
 
 ### State and Conventions (source of truth)
-Shared convention files under `.vscode/skills/_shared/` (or your configured skills path) provide full reference documentation (sub-agents have inline instructions — convention files are supplementary):
+Shared convention files under `~/.copilot/skills/_shared/` (or your configured skills path) provide full reference documentation (sub-agents have inline instructions — convention files are supplementary):
 - `engram-convention.md` for artifact naming and two-step recovery
 - `persistence-contract.md` for mode behavior and state persistence/recovery
 - `openspec-convention.md` for file layout when mode is `openspec`

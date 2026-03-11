@@ -609,7 +609,7 @@ Open Codex and type `/sdd-init`.
 
 VS Code supports MCP and custom instructions natively. The skills work with Copilot's agent mode and any MCP-compatible extension.
 
-**1. Copy skills to workspace:**
+**1. Copy skills:**
 
 ```bash
 # Using the install script
