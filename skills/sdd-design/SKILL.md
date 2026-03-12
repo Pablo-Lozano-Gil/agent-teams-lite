@@ -70,7 +70,7 @@ Before designing, read the actual code that will be affected:
 
 ### Step 3: Write design.md
 
-Create the design document:
+**IF mode is `openspec` or `hybrid`:** Create the design document:
 
 ```
 openspec/changes/{change-name}/
@@ -78,6 +78,8 @@ openspec/changes/{change-name}/
 ├── specs/
 └── design.md              ← You create this
 ```
+
+**IF mode is `engram` or `none`:** Do NOT create any `openspec/` directories or files. Compose the design content in memory — you will persist it in Step 4.
 
 #### Design Document Format
 
@@ -173,7 +175,7 @@ Return to the orchestrator:
 ## Design Created
 
 **Change**: {change-name}
-**Location**: openspec/changes/{change-name}/design.md
+**Location**: `openspec/changes/{change-name}/design.md` (openspec/hybrid) | Engram `sdd/{change-name}/design` (engram) | inline (none)
 
 ### Summary
 - **Approach**: {one-line technical approach}

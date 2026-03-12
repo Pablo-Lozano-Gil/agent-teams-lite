@@ -70,7 +70,11 @@ From the registry, identify and read any skills whose triggers match your task. 
 
 ### Step 2: Sync Delta Specs to Main Specs
 
-For each delta spec in `openspec/changes/{change-name}/specs/`:
+**IF mode is `engram`:** Skip filesystem sync — artifacts live in Engram only. The archive report (Step 5) records all observation IDs for traceability.
+
+**IF mode is `none`:** Skip — no artifacts to sync.
+
+**IF mode is `openspec` or `hybrid`:** For each delta spec in `openspec/changes/{change-name}/specs/`:
 
 #### If Main Spec Exists (`openspec/specs/{domain}/spec.md`)
 
@@ -100,7 +104,11 @@ openspec/changes/{change-name}/specs/{domain}/spec.md
 
 ### Step 3: Move to Archive
 
-Move the entire change folder to archive with date prefix:
+**IF mode is `engram`:** Skip — there are no `openspec/` directories to move. The archive report in Engram serves as the audit trail.
+
+**IF mode is `none`:** Skip — no filesystem operations.
+
+**IF mode is `openspec` or `hybrid`:** Move the entire change folder to archive with date prefix:
 
 ```
 openspec/changes/{change-name}/
@@ -111,11 +119,15 @@ Use today's date in ISO format (e.g., `2026-02-16`).
 
 ### Step 4: Verify Archive
 
-Confirm:
+**IF mode is `openspec` or `hybrid`:** Confirm:
 - [ ] Main specs updated correctly
 - [ ] Change folder moved to archive
 - [ ] Archive contains all artifacts (proposal, specs, design, tasks)
 - [ ] Active changes directory no longer has this change
+
+**IF mode is `engram`:** Confirm all artifact observation IDs are recorded in the archive report.
+
+**IF mode is `none`:** Skip verification — no persisted artifacts.
 
 ### Step 5: Persist Archive Report
 
@@ -144,7 +156,7 @@ Return to the orchestrator:
 ## Change Archived
 
 **Change**: {change-name}
-**Archived to**: openspec/changes/archive/{YYYY-MM-DD}-{change-name}/
+**Archived to**: `openspec/changes/archive/{YYYY-MM-DD}-{change-name}/` (openspec/hybrid) | Engram archive report (engram) | inline (none)
 
 ### Specs Synced
 | Domain | Action | Details |

@@ -66,11 +66,15 @@ From the proposal's "Affected Areas", determine which spec domains are touched. 
 
 ### Step 3: Read Existing Specs
 
-If `openspec/specs/{domain}/spec.md` exists, read it to understand CURRENT behavior. Your delta specs describe CHANGES to this behavior.
+**IF mode is `openspec` or `hybrid`:** If `openspec/specs/{domain}/spec.md` exists, read it to understand CURRENT behavior. Your delta specs describe CHANGES to this behavior.
+
+**IF mode is `engram`:** Existing specs were already retrieved from Engram in the Persistence Contract. Skip filesystem reads.
+
+**IF mode is `none`:** Skip — no existing specs to read.
 
 ### Step 4: Write Delta Specs
 
-Create specs inside the change folder:
+**IF mode is `openspec` or `hybrid`:** Create specs inside the change folder:
 
 ```
 openspec/changes/{change-name}/
@@ -79,6 +83,8 @@ openspec/changes/{change-name}/
     └── {domain}/
         └── spec.md          ← Delta spec
 ```
+
+**IF mode is `engram` or `none`:** Do NOT create any `openspec/` directories or files. Compose the spec content in memory — you will persist it in Step 5.
 
 #### Delta Spec Format
 

@@ -64,16 +64,22 @@ From the registry, identify and read any skills whose triggers match your task. 
 
 ### Step 2: Create Change Directory
 
-Create the change folder structure:
+**IF mode is `openspec` or `hybrid`:** create the change folder structure:
 
 ```
 openspec/changes/{change-name}/
 └── proposal.md
 ```
 
+**IF mode is `engram` or `none`:** Do NOT create any `openspec/` directories. Skip this step.
+
 ### Step 3: Read Existing Specs
 
-If `openspec/specs/` has relevant specs, read them to understand current behavior that this change might affect.
+**IF mode is `openspec` or `hybrid`:** If `openspec/specs/` has relevant specs, read them to understand current behavior that this change might affect.
+
+**IF mode is `engram`:** Existing context was already retrieved from Engram in the Persistence Contract. Skip filesystem reads.
+
+**IF mode is `none`:** Skip — no existing specs to read.
 
 ### Step 4: Write proposal.md
 
@@ -156,7 +162,7 @@ Return to the orchestrator:
 ## Proposal Created
 
 **Change**: {change-name}
-**Location**: openspec/changes/{change-name}/proposal.md
+**Location**: `openspec/changes/{change-name}/proposal.md` (openspec/hybrid) | Engram `sdd/{change-name}/proposal` (engram) | inline (none)
 
 ### Summary
 - **Intent**: {one-line summary}
