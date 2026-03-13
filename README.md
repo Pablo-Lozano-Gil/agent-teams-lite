@@ -319,6 +319,7 @@ Options:
 ```bash
 ./scripts/setup.sh --all              # Auto-detect + install all (no prompts)
 ./scripts/setup.sh --agent claude-code # Install for a specific agent
+./scripts/setup.sh --opencode-mode multi  # Use multi-model mode for OpenCode
 ./scripts/setup.sh --non-interactive  # For external installers (e.g. gentle-ai)
 ```
 
@@ -326,7 +327,7 @@ Windows PowerShell:
 ```powershell
 .\scripts\setup.ps1              # Interactive
 .\scripts\setup.ps1 -All         # Auto-detect + install all
-.\scripts\setup.ps1 -Agent opencode  # Specific agent
+.\scripts\setup.ps1 -Agent opencode -OpenCodeMode multi  # Multi-model mode
 ```
 
 > **Skills only?** Use `./scripts/install.sh` if you just want to copy skills without configuring orchestrator prompts.
@@ -357,6 +358,7 @@ We publish versioned release notes on GitHub:
 
 Latest release:
 
+- `v3.3.6` — OpenCode multi-model support: one agent per SDD phase, each with its own model. Setup scripts auto-configure both modes.
 - `v3.3.5` — Full setup scripts (`setup.sh` / `setup.ps1`): auto-detect agents + install skills + configure orchestrator prompts in one step.
 - `v3.3.4` — Installer fixes: skill-registry included, correct VS Code path.
 - `v3.3.3` — Multi-directory skill scanning + correct agent paths from gentle-ai.
@@ -490,6 +492,12 @@ Sub-agents start with a **fresh context** — they don't know what user skills e
 - `--non-interactive` mode for external installers like [gentle-ai](https://github.com/gentleman-programming/gentleman-ai-installer).
 - OpenCode special handling: slash commands + JSON config merge.
 
+**v3.3.6 — OpenCode Multi-Model Support:**
+- New **multi-model mode** for OpenCode: one dedicated agent per SDD phase, each configurable with its own model.
+- Setup scripts ask which mode to use (single vs multi) or accept `--opencode-mode` flag.
+- Single mode (default) unchanged — one `sdd-orchestrator` handles everything.
+- Multi mode creates 9 hidden subagents + orchestrator with phase delegation and task permissions.
+
 ---
 
 ## Installation
@@ -512,6 +520,7 @@ The setup script:
 - Copies skills to the correct user-level directory
 - Configures orchestrator prompts with idempotent markers (safe to re-run)
 - Handles OpenCode's special case (commands + JSON config merge)
+- For OpenCode: asks single vs multi-model mode (or use `--opencode-mode`)
 
 > **For external installers** (e.g. [gentle-ai](https://github.com/gentleman-programming/gentleman-ai-installer)): use `--non-interactive` flag.
 
@@ -554,6 +563,38 @@ The example is intentionally lean to avoid token bloat in always-loaded system p
 
 > **Automatic:** `./scripts/setup.sh --agent opencode` handles all steps below.
 
+OpenCode supports two agent modes:
+
+#### Single Model (default)
+
+One `sdd-orchestrator` agent handles all phases with the same model. Simple and easy to maintain.
+
+```bash
+./scripts/setup.sh --agent opencode                        # Interactive (asks which mode)
+./scripts/setup.sh --agent opencode --opencode-mode single # Explicit single mode
+```
+
+#### Multi-Model (per-phase agents)
+
+One dedicated agent per SDD phase, each configurable with its own model. Use a cheap/fast model for exploration, a strong coder for implementation, and your most capable model for verification.
+
+```bash
+./scripts/setup.sh --agent opencode --opencode-mode multi
+```
+
+This creates 9 subagents (`sdd-init`, `sdd-explore`, `sdd-propose`, `sdd-spec`, `sdd-design`, `sdd-tasks`, `sdd-apply`, `sdd-verify`, `sdd-archive`) plus the `sdd-orchestrator` coordinator. To assign models, edit `~/.config/opencode/opencode.json` and add `"model": "your-model"` to each agent:
+
+```json
+{
+  "agent": {
+    "sdd-orchestrator": { "mode": "primary", "model": "coordinator-model" },
+    "sdd-explore":      { "mode": "subagent", "model": "fast-cheap-model" },
+    "sdd-apply":        { "mode": "subagent", "model": "good-coder-model" },
+    "sdd-verify":       { "mode": "subagent", "model": "strongest-model" }
+  }
+}
+```
+
 <details>
 <summary>Manual installation</summary>
 
@@ -566,12 +607,11 @@ cp examples/opencode/commands/sdd-*.md ~/.config/opencode/commands/
 
 **2. Add orchestrator agent to `~/.config/opencode/opencode.json`:**
 
-Merge the `agent` block from [`examples/opencode/opencode.json`](examples/opencode/opencode.json) into your existing config.
+Merge the `agent` block from the config template into your existing config:
+- Single mode: [`examples/opencode/opencode.single.json`](examples/opencode/opencode.single.json)
+- Multi mode: [`examples/opencode/opencode.multi.json`](examples/opencode/opencode.multi.json)
 
-Recommended setup:
-- Keep your everyday assistant (e.g., `gentleman`) as `primary`
-- Set `sdd-orchestrator` to `all`
-- Select `sdd-orchestrator` only when you want SDD workflows
+For multi mode, also update the `agent:` field in each subtask command (`sdd-init.md`, `sdd-explore.md`, `sdd-apply.md`, `sdd-verify.md`, `sdd-archive.md`) to point to the corresponding subagent name instead of `sdd-orchestrator`.
 
 </details>
 
@@ -781,7 +821,8 @@ agent-teams-lite/
 ├── examples/                          ← Config examples per tool
 │   ├── claude-code/CLAUDE.md
 │   ├── opencode/
-│   │   ├── opencode.json              ← Orchestrator agent config
+│   │   ├── opencode.single.json       ← Single-agent config (one model for all phases)
+│   │   ├── opencode.multi.json        ← Multi-agent config (one model per phase)
 │   │   └── commands/sdd-*.md          ← Slash commands for OpenCode
 │   ├── gemini-cli/GEMINI.md
 │   ├── codex/agents.md
