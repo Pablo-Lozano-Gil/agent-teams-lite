@@ -75,6 +75,7 @@ Sub-agents get a fresh context with NO memory. The orchestrator is responsible f
 - **Read context**: The ORCHESTRATOR searches engram (`mem_search`) for relevant prior context and passes it in the sub-agent prompt. The sub-agent does NOT search engram itself.
 - **Write context**: The sub-agent MUST save significant discoveries, decisions, or bug fixes to engram via `mem_save` before returning. It has the full detail — if it waits for the orchestrator, nuance is lost.
 - **When to include engram write instructions**: Always. Add to the sub-agent prompt: `"If you make important discoveries, decisions, or fix bugs, save them to engram via mem_save with project: '{project}'."`
+- **Skills**: Always include in the sub-agent prompt: `"Coding and workflow skills may be available. Before starting, check for a skill registry: 1. mem_search(query: 'skill-registry', project: '{project}') 2. Fallback: read .atl/skill-registry.md — If found, load any skills whose triggers match your task."`
 
 #### SDD Phases
 
@@ -122,7 +123,7 @@ When launching a phase, require the sub-agent to read `~/.claude/skills/sdd-{pha
 - `next_recommended`
 - `risks`
 
-Include a SKILL LOADING section in the sub-agent prompt (between TASK and PERSISTENCE):
+ALL sub-agent launch prompts (SDD and non-SDD) MUST include this SKILL LOADING section:
 ```
   SKILL LOADING (do this FIRST):
   Check for available skills:
