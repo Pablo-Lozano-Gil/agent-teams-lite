@@ -104,10 +104,7 @@ get_tool_path() {
             esac
             ;;
         vscode)
-            case "$OS" in
-                windows)  echo "$USERPROFILE/.copilot/skills" ;;
-                *)        echo "$HOME/.copilot/skills" ;;
-            esac
+            echo ".vscode/skills"
             ;;
         antigravity)
             case "$OS" in
@@ -238,8 +235,8 @@ install_skills() {
     fi
 
     local count=0
-    # Install sdd-* skills AND skill-registry
-    for skill_dir in "$SKILLS_SRC"/sdd-*/ "$SKILLS_SRC"/skill-registry/; do
+    # Install sdd-* skills, skill-registry, branch-pr, and issue-creation
+    for skill_dir in "$SKILLS_SRC"/sdd-*/ "$SKILLS_SRC"/skill-registry/ "$SKILLS_SRC"/branch-pr/ "$SKILLS_SRC"/issue-creation/; do
         [ -d "$skill_dir" ] || continue
         local skill_name
         skill_name=$(basename "$skill_dir")

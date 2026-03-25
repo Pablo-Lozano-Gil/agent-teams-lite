@@ -11,6 +11,8 @@
     Valid values: claude-code, opencode, gemini-cli, cursor, vscode, codex
 .PARAMETER All
     Auto-detect and install for all found agents.
+.PARAMETER OpenCodeMode
+    OpenCode agent mode: 'single' (default) or 'multi' (one agent per phase with its own model).
 .PARAMETER NonInteractive
     No prompts (for external installers like gentle-ai).
 .EXAMPLE
@@ -18,7 +20,7 @@
 .EXAMPLE
     .\setup.ps1 -All
 .EXAMPLE
-    .\setup.ps1 -Agent claude-code
+    .\setup.ps1 -Agent opencode -OpenCodeMode multi
 .EXAMPLE
     .\setup.ps1 -NonInteractive
 #>
@@ -27,6 +29,8 @@
 param(
     [ValidateSet('claude-code', 'opencode', 'gemini-cli', 'cursor', 'vscode', 'codex')]
     [string]$Agent,
+    [ValidateSet('single', 'multi')]
+    [string]$OpenCodeMode,
     [switch]$All,
     [switch]$NonInteractive,
     [switch]$Help
@@ -240,21 +244,59 @@ function Set-Orchestrator {
 # OpenCode Special Handling
 # ============================================================================
 
+function Ask-OpenCodeMode {
+    # If already set via parameter, skip
+    if ($script:OpenCodeMode) { return }
+
+    # Non-interactive defaults to single
+    if ($NonInteractive) {
+        $script:OpenCodeMode = 'single'
+        return
+    }
+
+    Write-Host ''
+    Write-Host '  OpenCode agent mode:' -ForegroundColor White
+    Write-Host ''
+    Write-Host '  1) Single model  - one agent handles all phases (simple, recommended)'
+    Write-Host '  2) Multi-model   - one agent per phase, each with its own model'
+    Write-Host ''
+    $choice = Read-Host '  Choice [1]'
+    if (-not $choice) { $choice = '1' }
+
+    switch ($choice) {
+        { $_ -eq '2' -or $_ -eq 'multi' } { $script:OpenCodeMode = 'multi' }
+        default { $script:OpenCodeMode = 'single' }
+    }
+}
+
 function Set-OpenCode {
     $commandsSrc = Join-Path $ExamplesDir 'opencode\commands'
     $commandsTarget = Join-Path $env:USERPROFILE '.config\opencode\commands'
     $configFile = Join-Path $env:USERPROFILE '.config\opencode\opencode.json'
-    $exampleConfig = Join-Path $ExamplesDir 'opencode\opencode.json'
+
+    # Determine mode and pick the right config template
+    Ask-OpenCodeMode
+    $exampleConfig = Join-Path $ExamplesDir "opencode\opencode.$($script:OpenCodeMode).json"
+    Write-Info "OpenCode mode: $($script:OpenCodeMode)"
 
     # Install commands
     if (Test-Path $commandsSrc) {
         New-Item -ItemType Directory -Path $commandsTarget -Force | Out-Null
         $count = 0
         Get-ChildItem -Path $commandsSrc -Filter 'sdd-*.md' | ForEach-Object {
-            Copy-Item -Path $_.FullName -Destination (Join-Path $commandsTarget $_.Name) -Force
+            $cmdName = $_.BaseName
+            $content = Get-Content -Path $_.FullName -Raw
+
+            if ($script:OpenCodeMode -eq 'multi' -and $content -match '(?m)^subtask:') {
+                # Multi mode: subtask commands point to their dedicated subagent
+                $modified = $content -replace '(?m)^agent: sdd-orchestrator', "agent: $cmdName"
+                Set-Content -Path (Join-Path $commandsTarget $_.Name) -Value $modified -NoNewline
+            } else {
+                Copy-Item -Path $_.FullName -Destination (Join-Path $commandsTarget $_.Name) -Force
+            }
             $count++
         }
-        Write-Ok "$count OpenCode commands installed"
+        Write-Ok "$count OpenCode commands installed ($($script:OpenCodeMode) mode)"
     }
 
     # Merge opencode.json
@@ -265,12 +307,37 @@ function Set-OpenCode {
                 $example = Get-Content -Path $exampleConfig -Raw | ConvertFrom-Json
 
                 # Merge agent config (OpenCode uses "agent" singular)
+                # Strategy: replace all sdd-* agents with template, preserve user model choices
                 if ($example.PSObject.Properties['agent']) {
                     if (-not $existing.PSObject.Properties['agent']) {
-                        $existing | Add-Member -NotePropertyName 'agent' -NotePropertyValue @{}
+                        $existing | Add-Member -NotePropertyName 'agent' -NotePropertyValue ([PSCustomObject]@{})
                     }
+
+                    # 1. Save existing model fields from sdd-* agents
+                    $savedModels = @{}
+                    foreach ($prop in @($existing.agent.PSObject.Properties)) {
+                        if ($prop.Name -like 'sdd-*' -and $prop.Value.PSObject.Properties['model']) {
+                            $savedModels[$prop.Name] = $prop.Value.model
+                        }
+                    }
+
+                    # 2. Remove all existing sdd-* agents (clean slate)
+                    foreach ($prop in @($existing.agent.PSObject.Properties)) {
+                        if ($prop.Name -like 'sdd-*') {
+                            $existing.agent.PSObject.Properties.Remove($prop.Name)
+                        }
+                    }
+
+                    # 3. Add new agents from template
                     foreach ($prop in $example.agent.PSObject.Properties) {
                         $existing.agent | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value -Force
+                    }
+
+                    # 4. Restore user model choices
+                    foreach ($name in $savedModels.Keys) {
+                        if ($existing.agent.PSObject.Properties[$name]) {
+                            $existing.agent.$name | Add-Member -NotePropertyName 'model' -NotePropertyValue $savedModels[$name] -Force
+                        }
                     }
                 }
 
@@ -280,18 +347,33 @@ function Set-OpenCode {
                 }
 
                 $existing | ConvertTo-Json -Depth 10 | Set-Content -Path $configFile
-                Write-Ok "Agent config merged into $configFile"
+                Write-Ok "Agent config merged into $configFile ($($script:OpenCodeMode) mode)"
             }
             catch {
                 Write-Warn "Could not merge opencode.json: $_"
-                Write-Info "Merge manually from examples\opencode\opencode.json"
+                Write-Info "Merge manually from examples\opencode\opencode.$($script:OpenCodeMode).json"
             }
         } else {
             $configDir = Split-Path -Parent $configFile
             New-Item -ItemType Directory -Path $configDir -Force | Out-Null
             Copy-Item -Path $exampleConfig -Destination $configFile
-            Write-Ok "Config created at $configFile"
+            Write-Ok "Config created at $configFile ($($script:OpenCodeMode) mode)"
         }
+    }
+
+    # Install background-agents plugin
+    $pluginsDir = Join-Path $env:USERPROFILE '.config\opencode\plugins'
+    $pluginSrc = Join-Path $ScriptRoot '..\examples\opencode\plugins\background-agents.ts'
+    New-Item -ItemType Directory -Path $pluginsDir -Force | Out-Null
+    Copy-Item -Path $pluginSrc -Destination (Join-Path $pluginsDir 'background-agents.ts') -Force
+    Write-Ok "background-agents plugin installed -> $pluginsDir"
+    Write-Info "Installing npm dependency: unique-names-generator"
+    Push-Location (Join-Path $env:USERPROFILE '.config\opencode')
+    try {
+        npm install unique-names-generator
+        Write-Ok "unique-names-generator installed"
+    } finally {
+        Pop-Location
     }
 }
 
@@ -329,6 +411,7 @@ try {
         Write-Host 'Options:'
         Write-Host '  -All               Auto-detect and install for all found agents'
         Write-Host '  -Agent NAME        Install for a specific agent'
+        Write-Host '  -OpenCodeMode M    OpenCode agent mode: single or multi (per-phase models)'
         Write-Host '  -NonInteractive    No prompts (for external installers)'
         Write-Host '  -Help              Show this help'
         Write-Host ''

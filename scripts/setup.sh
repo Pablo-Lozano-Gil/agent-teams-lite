@@ -293,13 +293,42 @@ setup_orchestrator() {
 # OpenCode Special Handling
 # ============================================================================
 
+ask_opencode_mode() {
+    # If already set via flag, skip
+    [[ -n "$OPENCODE_MODE" ]] && return
+
+    # Non-interactive defaults to single
+    if $NON_INTERACTIVE; then
+        OPENCODE_MODE="single"
+        return
+    fi
+
+    echo ""
+    echo -e "  ${BOLD}OpenCode agent mode:${NC}"
+    echo ""
+    echo "  1) Single model  — one agent handles all phases (simple, recommended)"
+    echo "  2) Multi-model   — one agent per phase, each with its own model"
+    echo ""
+    read -rp "  Choice [1]: " mode_choice
+    mode_choice="${mode_choice:-1}"
+
+    case "$mode_choice" in
+        2|multi)  OPENCODE_MODE="multi" ;;
+        *)        OPENCODE_MODE="single" ;;
+    esac
+}
+
 setup_opencode() {
     local home
     home="$(home_dir)"
     local commands_src="$EXAMPLES_DIR/opencode/commands"
     local commands_target="$home/.config/opencode/commands"
     local config_file="$home/.config/opencode/opencode.json"
-    local example_config="$EXAMPLES_DIR/opencode/opencode.json"
+
+    # Determine mode and pick the right config template
+    ask_opencode_mode
+    local example_config="$EXAMPLES_DIR/opencode/opencode.${OPENCODE_MODE}.json"
+    info "OpenCode mode: $OPENCODE_MODE"
 
     # Install commands
     if [ -d "$commands_src" ]; then
@@ -307,40 +336,77 @@ setup_opencode() {
         local count=0
         for cmd_file in "$commands_src"/sdd-*.md; do
             [ -f "$cmd_file" ] || continue
-            cp "$cmd_file" "$commands_target/"
+            local cmd_name
+            cmd_name=$(basename "$cmd_file" .md)
+
+            if [[ "$OPENCODE_MODE" == "multi" ]] && grep -q "^subtask:" "$cmd_file"; then
+                # Multi mode: subtask commands point to their dedicated subagent
+                sed "s/^agent: sdd-orchestrator/agent: $cmd_name/" "$cmd_file" > "$commands_target/$(basename "$cmd_file")"
+            else
+                cp "$cmd_file" "$commands_target/"
+            fi
             count=$((count + 1))
         done
-        ok "$count OpenCode commands installed"
+        ok "$count OpenCode commands installed ($OPENCODE_MODE mode)"
     fi
 
-    # Merge opencode.json agent config
+    # Merge opencode.json agent config (idempotent: replaces sdd-* agents, preserves user model choices)
     if command -v jq &>/dev/null && [ -f "$example_config" ]; then
         if [ -f "$config_file" ]; then
-            # Extract agent block from example and merge into existing config
-            # Note: OpenCode uses "agent" (singular) as the key
             local example_agents
             example_agents=$(jq '.agent // {}' "$example_config")
 
+            # Smart merge:
+            # 1. Remove all existing sdd-* keys (clean slate for our agents)
+            # 2. Preserve "model" field from existing sdd-* agents (user customization)
+            # 3. Add new agent definitions, restoring preserved model fields
+            # 4. Don't touch non-sdd agents
             local merged
             merged=$(jq --argjson new_agents "$example_agents" '
-                .agent = ((.agent // {}) + $new_agents)
-                | del(.agents)
+                # 1. Capture existing model fields from sdd-* agents (user customization)
+                (reduce ((.agent // {}) | to_entries[] |
+                    select(.key | startswith("sdd-")) | select(.value.model)) as $e
+                    ({}; . + {($e.key): $e.value.model})) as $saved_models |
+
+                # 2. Remove all sdd-* agents, keep user custom agents, add new template agents
+                .agent = (
+                    ((.agent // {}) | with_entries(select(.key | startswith("sdd-") | not)))
+                    + $new_agents
+                ) |
+
+                # 3. Restore user model choices onto new agent definitions
+                reduce ($saved_models | to_entries[]) as $m (.;
+                    if .agent[$m.key] then .agent[$m.key].model = $m.value else . end
+                ) |
+
+                # 4. Clean up stale "agents" plural key
+                del(.agents)
             ' "$config_file")
 
             echo "$merged" > "$config_file"
-            ok "Agent config merged into $config_file"
+            ok "Agent config merged into $config_file ($OPENCODE_MODE mode)"
         else
             mkdir -p "$(dirname "$config_file")"
             cp "$example_config" "$config_file"
-            ok "Config created at $config_file"
+            ok "Config created at $config_file ($OPENCODE_MODE mode)"
         fi
     else
         if ! command -v jq &>/dev/null; then
             warn "jq not found — cannot auto-merge opencode.json"
         fi
-        warn "Merge manually: copy agent block from examples/opencode/opencode.json"
+        warn "Merge manually: copy agent block from examples/opencode/opencode.${OPENCODE_MODE}.json"
         info "Into: $config_file"
     fi
+
+    # Install background-agents plugin
+    local plugins_dir="$home/.config/opencode/plugins"
+    local plugin_src="$SCRIPT_DIR/../examples/opencode/plugins/background-agents.ts"
+    mkdir -p "$plugins_dir"
+    cp "$plugin_src" "$plugins_dir/background-agents.ts"
+    ok "background-agents plugin installed → $plugins_dir"
+    info "Installing npm dependency: unique-names-generator"
+    (cd "$home/.config/opencode" && npm install unique-names-generator)
+    ok "unique-names-generator installed"
 }
 
 # ============================================================================
@@ -453,18 +519,27 @@ echo -e "${CYAN}${BOLD}╚══════════════════
 AGENT=""
 ALL=false
 NON_INTERACTIVE=false
+OPENCODE_MODE=""  # "", "single", or "multi"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --agent)          AGENT="$2"; shift 2 ;;
         --all)            ALL=true; shift ;;
         --non-interactive) NON_INTERACTIVE=true; ALL=true; shift ;;
+        --opencode-mode)
+            if [[ "$2" == "single" || "$2" == "multi" ]]; then
+                OPENCODE_MODE="$2"; shift 2
+            else
+                echo "Invalid opencode mode: $2 (use 'single' or 'multi')"; exit 1
+            fi
+            ;;
         -h|--help)
             echo "Usage: setup.sh [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --all               Auto-detect and install for all found agents"
             echo "  --agent NAME        Install for a specific agent"
+            echo "  --opencode-mode M   OpenCode agent mode: 'single' or 'multi' (per-phase models)"
             echo "  --non-interactive   No prompts (for external installers)"
             echo "  -h, --help          Show this help"
             echo ""
