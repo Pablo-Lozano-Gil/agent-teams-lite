@@ -96,28 +96,32 @@ Sub-agents start with a **fresh context** — they don't know what user skills e
 
 ## Model-Aware Routing via Agent Mentions
 
-By default, all SDD commands route through `sdd-orchestrator` (via `agent: sdd-orchestrator` in command YAML files). When the orchestrator delegates via the `delegate` tool, it passes the `agent` parameter which tells OpenCode to load that agent's config — including its `model` field.
+By default, all SDD commands route through `sdd-orchestrator` (via `agent: sdd-orchestrator` in command YAML files). Each agent should have a `model` field in `opencode.json` that defines which model it should use.
 
-However, some OpenCode providers (e.g., gentle-ai) may not fully respect the `agent` parameter for model selection in `session.prompt()`. In these cases, the sub-agent session inherits the parent's model instead of using the target agent's configured model.
+**However, the `model` field is necessary but NOT sufficient.** When the orchestrator delegates via the `delegate` tool (which calls `session.prompt({ agent: "sdd-explore" })`), OpenCode does NOT apply the target agent's `model` config — the sub-agent session inherits the parent's model instead. This has been confirmed on gentle-ai/Windows and may affect other providers.
 
-**Alternative: `@agent-name` text mentions.** The orchestrator can use `@agent-name` mentions in its output, which triggers OpenCode's native agent routing. This consistently applies the target agent's full config including `model`.
+**Recommended approach: `@agent-name` text mentions.** The orchestrator MUST use `@agent-name` mentions in its output to trigger OpenCode's native agent routing. This is the only pattern that consistently applies the target agent's full config including `model`.
 
-To use this pattern, modify the orchestrator's `AGENTS.md` Commands section to use `@subagent` mentions instead of skill-based invocations.
+If you want per-phase model routing (e.g., Sonnet for exploration, Opus for spec writing), you MUST configure the orchestrator's `AGENTS.md` Commands section to use `@subagent` mentions.
 
-**Standard approach:**
+**`session.prompt({ agent })` — model NOT applied:**
 
 ```
 orchestrator calls delegate("Research OAuth2 PKCE flow", "sdd-explore")
+# Sub-agent runs on the ORCHESTRATOR's model, ignoring sdd-explore's model config
 ```
 
-**Mention-based approach:**
+**`@agent-name` mention — model correctly applied (recommended):**
 
 ```
 orchestrator outputs @sdd-explore Research OAuth2 PKCE flow
+# Sub-agent runs on sdd-explore's configured model
 ```
 
 The mention-based approach triggers OpenCode's built-in agent routing, which loads the full agent config (model, system prompt, tools) before creating the session.
 
-> **Prerequisite:** Each agent must have a `model` field in `opencode.json` for model routing to take effect.
+> **Prerequisites:**
+> - Each agent MUST have a `model` field in `opencode.json` (defines which model the agent should use)
+> - The orchestrator's `AGENTS.md` Commands MUST use `@agent-name` mentions (triggers the actual model routing)
 
 Reported by community member Bismarck Cerda (observation #1290).

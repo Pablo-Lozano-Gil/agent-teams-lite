@@ -183,7 +183,7 @@ background-agents.ts (1447 lines)
 
 ## Known Issues
 
-- **Model routing via `agent` parameter**: Some OpenCode providers (e.g., gentle-ai) may not fully apply the target agent's `model` config when `delegate(prompt, agent)` creates a child session via `session.prompt()`. The sub-agent session may inherit the parent's model instead. **Workaround:** Use `@agent-name` text mentions in the orchestrator's output to trigger OpenCode's native agent routing, which consistently applies the target agent's full config. See [Model-Aware Routing via Agent Mentions](../../../docs/sub-agents.md#model-aware-routing-via-agent-mentions) for details. (Reported by Bismarck Cerda, observation #1290)
+- **Model routing via `agent` parameter**: The `model` field in `opencode.json` is necessary (defines which model each agent should use) but NOT sufficient for per-phase model routing. When `delegate(prompt, agent)` creates a child session via `session.prompt()`, OpenCode does NOT apply the target agent's `model` — the sub-agent inherits the parent's model instead. Confirmed on gentle-ai/Windows. **Recommended pattern:** Use `@agent-name` text mentions in the orchestrator's `AGENTS.md` Commands section to trigger OpenCode's native agent routing, which correctly applies the target agent's full config including `model`. See [Model-Aware Routing via Agent Mentions](../../../docs/sub-agents.md#model-aware-routing-via-agent-mentions) for details. (Reported by Bismarck Cerda, observation #1290)
 
 ## Monitoring
 
