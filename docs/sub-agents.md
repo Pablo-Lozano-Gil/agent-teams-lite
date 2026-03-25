@@ -4,7 +4,7 @@ Reference documentation for the SDD phase sub-agents and skill system. For quick
 
 ## SDD Phase Sub-Agents
 
-Each sub-agent is a SKILL.md file — pure Markdown instructions that any AI assistant can follow. The orchestrator resolves skill paths from the [skill registry](#skill-registry) and passes them directly in each sub-agent's launch prompt — sub-agents receive ready-to-use paths, not a search task.
+Each sub-agent is a SKILL.md file — pure Markdown instructions that any AI assistant can follow. Sub-agents discover and load skills on their own — each SKILL.md includes a Step 1 for loading the [skill registry](#skill-registry), so the orchestrator does not need to pre-resolve skill paths.
 
 | Sub-Agent | Skill File | What It Does |
 |-----------|-----------|-------------|
@@ -46,9 +46,7 @@ Example:
 
 ### Sub-Agent Context Protocol
 
-Sub-agents start with a **fresh context** — they don't know what user skills exist (React, TDD, Playwright, etc.). The orchestrator controls context access.
-
-Each sub-agent receives the **pre-resolved paths** directly in its launch prompt — no registry search needed. Sub-agents do NOT search for the registry themselves.
+Sub-agents start with a **fresh context** — they don't know what user skills exist (React, TDD, Playwright, etc.). Each sub-agent's SKILL.md includes a Step 1 that loads the skill registry, so sub-agents discover and load relevant skills on their own. The orchestrator does NOT need to pre-resolve skill paths.
 
 Sub-agents are also instructed to save discoveries, decisions, and bug fixes to engram automatically (non-SDD sub-agents) or via the mandatory persist step (SDD phases).
 
@@ -73,18 +71,17 @@ All skills reference three shared convention files in `skills/_shared/`. Critica
 
 ## Skill Registry
 
-Sub-agents start with a **fresh context** — they don't know what user skills exist (React, TDD, Playwright, etc.). The skill registry solves this — but the key is **who reads it**.
+Sub-agents start with a **fresh context** — they don't know what user skills exist (React, TDD, Playwright, etc.). The skill registry solves this — and sub-agents discover it on their own.
 
 **How it works:**
 1. `/sdd-init` or `/skill-registry` scans your installed skills and project conventions
 2. Writes `.atl/skill-registry.md` in the project root (mode-independent, always created)
 3. If engram is available, also saves to engram (cross-session bonus)
-4. The **orchestrator** reads the registry once per session and resolves the relevant skill paths
-5. Each sub-agent receives the **pre-resolved paths** directly in its launch prompt — no registry search needed
+4. Each sub-agent's SKILL.md includes a Step 1 that loads the skill registry — sub-agents discover skills on their own
+5. Discovery order: engram (`mem_search(query: "skill-registry", project: "{project}")`) → fallback `.atl/skill-registry.md`
+6. If a sub-agent finds relevant skills (React, Go testing, Angular, etc.), it loads and follows them automatically
 
-**Orchestrator reads the registry. Sub-agents receive paths. Sub-agents do NOT search for the registry.**
-
-**Orchestrator read priority:** Engram first (fast, survives compaction) → `.atl/skill-registry.md` as fallback.
+**Sub-agents are self-sufficient for skill discovery. The orchestrator does NOT need to pre-resolve skill paths.**
 
 **What it contains:**
 - User skills table: trigger → skill name → path (e.g., "React components" → `react-19` → `~/.claude/skills/react-19/SKILL.md`)
