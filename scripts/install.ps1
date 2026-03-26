@@ -185,11 +185,13 @@ function Install-Skills {
     }
 
     $count = 0
-    # Install sdd-* skills AND skill-registry
+    # Install all distributable skills
     $skillDirs = @(Get-ChildItem -Path $SkillsSrc -Directory -Filter 'sdd-*')
-    $registryDir = Join-Path $SkillsSrc 'skill-registry'
-    if (Test-Path $registryDir) {
-        $skillDirs += Get-Item $registryDir
+    foreach ($extraSkill in @('skill-registry', 'judgment-day', 'go-testing', 'skill-creator', 'branch-pr', 'issue-creation')) {
+        $extraDir = Join-Path $SkillsSrc $extraSkill
+        if (Test-Path $extraDir) {
+            $skillDirs += Get-Item $extraDir
+        }
     }
 
     foreach ($skillDir in $skillDirs) {

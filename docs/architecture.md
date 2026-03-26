@@ -119,8 +119,8 @@ graph TB
     │         │         │         │         │         │
     └─────────┴─────────┴────┬────┴─────────┴─────────┘
                              │
-              (receive pre-resolved skill paths
-               from the orchestrator's launch prompt)
+               (receive pre-resolved compact rules
+                from the orchestrator's launch prompt)
                              │
                  ┌───────────▼───────────┐      ┌────────────────────┐
                  │    SUB-AGENT USES     │      │   SKILL REGISTRY   │
@@ -204,11 +204,12 @@ Example:
 agent-teams-lite/
 ├── README.md                          ← Project overview and quick start
 ├── LICENSE
-├── skills/                            ← 12 skill files + shared conventions
+├── skills/                            ← 15 skill files + shared conventions
 │   ├── _shared/                       ← Shared conventions (referenced by all skills)
 │   │   ├── persistence-contract.md    ← Mode resolution, sub-agent context protocol, skill loading
 │   │   ├── engram-convention.md       ← Supplementary: deterministic naming & recovery
-│   │   └── openspec-convention.md     ← File paths, directory structure, config reference
+│   │   ├── openspec-convention.md     ← File paths, directory structure, config reference
+│   │   └── skill-resolver.md          ← Orchestrator protocol for compact-rule injection
 │   ├── sdd-init/SKILL.md             ← Bootstraps project + builds skill registry
 │   ├── sdd-explore/SKILL.md
 │   ├── sdd-propose/SKILL.md
@@ -219,6 +220,9 @@ agent-teams-lite/
 │   ├── sdd-verify/SKILL.md           ← v2.0: Real test execution + spec compliance matrix
 │   ├── sdd-archive/SKILL.md
 │   ├── skill-registry/SKILL.md       ← Scans skills + conventions, writes .atl/skill-registry.md
+│   ├── judgment-day/SKILL.md         ← Dual blind review + fix loop
+│   ├── go-testing/SKILL.md           ← Shared Go test patterns
+│   ├── skill-creator/SKILL.md        ← Creates new skills from templates
 │   ├── issue-creation/SKILL.md       ← GitHub issue creation workflow
 │   └── branch-pr/SKILL.md            ← Branch + pull request workflow
 ├── docs/                              ← Deep-dive documentation
@@ -227,6 +231,7 @@ agent-teams-lite/
 ├── examples/                          ← Config examples per tool
 │   ├── claude-code/CLAUDE.md
 │   ├── opencode/
+│   │   ├── AGENTS.md                  ← OpenCode orchestrator prompt referenced by config
 │   │   ├── opencode.single.json       ← Ready-to-use config (all agents, default model)
 │   │   ├── opencode.multi.json        ← Template config (all agents, customize model per phase)
 │   │   ├── commands/sdd-*.md          ← Slash commands for OpenCode

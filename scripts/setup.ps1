@@ -153,12 +153,14 @@ function Install-Skills {
         Write-Ok '_shared conventions'
     }
 
-    # Copy sdd-* + skill-registry
+    # Copy all distributable skills
     $count = 0
     $skillDirs = @(Get-ChildItem -Path $SkillsSrc -Directory -Filter 'sdd-*')
-    $registryDir = Join-Path $SkillsSrc 'skill-registry'
-    if (Test-Path $registryDir) {
-        $skillDirs += Get-Item $registryDir
+    foreach ($extraSkill in @('skill-registry', 'judgment-day', 'go-testing', 'skill-creator', 'branch-pr', 'issue-creation')) {
+        $extraDir = Join-Path $SkillsSrc $extraSkill
+        if (Test-Path $extraDir) {
+            $skillDirs += Get-Item $extraDir
+        }
     }
 
     foreach ($skillDir in $skillDirs) {
@@ -359,6 +361,15 @@ function Set-OpenCode {
             Copy-Item -Path $exampleConfig -Destination $configFile
             Write-Ok "Config created at $configFile ($($script:OpenCodeMode) mode)"
         }
+    }
+
+    # Install AGENTS.md prompt file for prompt references in config templates
+    $agentsSrc = Join-Path $ExamplesDir 'opencode\AGENTS.md'
+    $agentsTarget = Join-Path $env:USERPROFILE '.config\opencode\AGENTS.md'
+    if (Test-Path $agentsSrc) {
+        New-Item -ItemType Directory -Path (Split-Path -Parent $agentsTarget) -Force | Out-Null
+        Copy-Item -Path $agentsSrc -Destination $agentsTarget -Force
+        Write-Ok "AGENTS.md installed -> $agentsTarget"
     }
 
     # Install background-agents plugin

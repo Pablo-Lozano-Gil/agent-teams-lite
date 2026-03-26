@@ -17,13 +17,21 @@ You are an EXECUTOR for this phase, not the orchestrator. Do the initialization 
 
 ## Execution and Persistence Contract
 
-> **Shared protocol**: Read `skills/_shared/sdd-phase-common.md` **Section C** for the canonical persistence rules (engram save pattern, openspec, hybrid, none).
-
-Phase-specific notes for `sdd-init`:
-
 - If mode is `engram`:
   Do NOT create `openspec/` directory.
-  Use `topic_key: "sdd-init/{project-name}"` and `title: "sdd-init/{project-name}"` (upsert — re-running init updates, not duplicates).
+
+  **Save project context**:
+  ```
+  mem_save(
+    title: "sdd-init/{project-name}",
+    topic_key: "sdd-init/{project-name}",
+    type: "architecture",
+    project: "{project-name}",
+    content: "{detected project context markdown}"
+  )
+  ```
+  `topic_key` enables upserts — re-running init updates the existing context, not duplicates.
+
   (See `skills/_shared/engram-convention.md` for full naming conventions.)
 - If mode is `openspec`: Read and follow `skills/_shared/openspec-convention.md`. Run full bootstrap.
 - If mode is `hybrid`: Read and follow BOTH convention files. Run openspec bootstrap AND persist context to Engram.
@@ -90,8 +98,6 @@ rules:
 
 ### Step 4: Build Skill Registry
 
-> **Shared protocol**: Read `skills/_shared/sdd-phase-common.md` **Section A** for the canonical skill-loading procedure.
-
 Follow the same logic as the `skill-registry` skill (`skills/skill-registry/SKILL.md`):
 
 1. Scan user skills: glob `*/SKILL.md` across ALL known skill directories. **User-level**: `~/.claude/skills/`, `~/.config/opencode/skills/`, `~/.gemini/skills/`, `~/.cursor/skills/`, `~/.copilot/skills/`, parent of this skill file. **Project-level**: `.claude/skills/`, `.gemini/skills/`, `.agent/skills/`, `skills/`. Skip `sdd-*`, `_shared`, `skill-registry`. Deduplicate by name (project-level wins). Read frontmatter triggers.
@@ -104,8 +110,6 @@ See `skills/skill-registry/SKILL.md` for the full registry format and scanning d
 ### Step 5: Persist Project Context
 
 **This step is MANDATORY — do NOT skip it.**
-
-> **Shared protocol**: Follow `skills/_shared/sdd-phase-common.md` **Section C** for persistence mechanics.
 
 If mode is `engram`:
 ```
@@ -123,8 +127,6 @@ If mode is `openspec` or `hybrid`: the config was already written in Step 3.
 If mode is `hybrid`: also call `mem_save` as above (write to BOTH backends).
 
 ### Step 6: Return Summary
-
-> **Shared protocol**: Follow `skills/_shared/sdd-phase-common.md` **Section D** for the required return envelope format.
 
 Return a structured summary adapted to the resolved mode:
 

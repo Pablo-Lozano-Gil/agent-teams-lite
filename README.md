@@ -53,7 +53,7 @@ Three concepts:
 
 2. **Spec-Driven Development (SDD)** — A DAG of phases: `explore → propose → spec + design → tasks → apply → verify → archive`. Each phase is a skill that any AI agent can run. [See the phases →](docs/sub-agents.md)
 
-3. **Your skills, pre-loaded** — A skill registry catalogs your coding standards (React, TDD, Tailwind, etc.) and the orchestrator passes them to every sub-agent automatically. [Details →](docs/sub-agents.md#skill-registry)
+3. **Your skills, pre-loaded** — A skill registry catalogs your coding standards (React, TDD, Tailwind, etc.), generates compact rules, and the orchestrator injects the relevant ones into every sub-agent automatically. [Details →](docs/sub-agents.md#skill-registry)
 
 ## Quick Start
 
@@ -63,7 +63,7 @@ cd agent-teams-lite
 ./scripts/setup.sh --all
 ```
 
-That's it. The script detects which tools you have installed and configures them.
+That's it. The script detects which tools you have installed, installs the full 15-skill set, and configures them.
 
 > **Windows?** Run `.\scripts\setup.ps1 -All` in PowerShell.
 

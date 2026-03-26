@@ -53,7 +53,7 @@ The setup script:
 **1. Copy skills:**
 
 ```bash
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.claude/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.claude/skills/
 ```
 
 **2. Add orchestrator to `~/.claude/CLAUDE.md`:**
@@ -116,8 +116,9 @@ The setup script preserves your model choices across updates — re-running `set
 **1. Copy skills and commands:**
 
 ```bash
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.config/opencode/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.config/opencode/skills/
 cp examples/opencode/commands/sdd-*.md ~/.config/opencode/commands/
+cp examples/opencode/AGENTS.md ~/.config/opencode/AGENTS.md
 ```
 
 **2. Add orchestrator agent to `~/.config/opencode/opencode.json`:**
@@ -125,6 +126,8 @@ cp examples/opencode/commands/sdd-*.md ~/.config/opencode/commands/
 Merge the `agent` block from the config template into your existing config:
 - Single mode: [`examples/opencode/opencode.single.json`](examples/opencode/opencode.single.json)
 - Multi mode: [`examples/opencode/opencode.multi.json`](examples/opencode/opencode.multi.json)
+
+The OpenCode examples now reference `~/.config/opencode/AGENTS.md` via `"prompt": "{file:./AGENTS.md}"`, so copy that file too.
 
 For multi mode, also update the `agent:` field in each subtask command (`sdd-init.md`, `sdd-explore.md`, `sdd-apply.md`, `sdd-verify.md`, `sdd-archive.md`) to point to the corresponding subagent name instead of `sdd-orchestrator`.
 
@@ -148,7 +151,7 @@ For multi mode, also update the `agent:` field in each subtask command (`sdd-ini
 **1. Copy skills:**
 
 ```bash
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.gemini/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.gemini/skills/
 ```
 
 **2. Add orchestrator to `~/.gemini/GEMINI.md`:**
@@ -175,7 +178,7 @@ Make sure `GEMINI_SYSTEM_MD=1` is set in `~/.gemini/.env` so Gemini loads the sy
 **1. Copy skills:**
 
 ```bash
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.codex/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.codex/skills/
 ```
 
 **2. Add orchestrator instructions:**
@@ -200,7 +203,7 @@ Append the contents of [`examples/codex/agents.md`](examples/codex/agents.md) to
 **1. Copy skills:**
 
 ```bash
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.copilot/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.copilot/skills/
 ```
 
 **2. Add orchestrator instructions:**
@@ -228,11 +231,11 @@ Prompt file paths:
 
 ```bash
 # Global (available across all projects)
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.gemini/antigravity/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.gemini/antigravity/skills/
 
 # Workspace-specific (per project)
 mkdir -p .agent/skills
-cp -r skills/_shared skills/sdd-* skills/skill-registry .agent/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation .agent/skills/
 ```
 
 **2. Add orchestrator instructions:**
@@ -260,10 +263,10 @@ Open Antigravity and type `/sdd-init` in the agent panel.
 
 ```bash
 # Global
-cp -r skills/_shared skills/sdd-* skills/skill-registry ~/.cursor/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ~/.cursor/skills/
 
 # Or per-project
-cp -r skills/_shared skills/sdd-* skills/skill-registry ./your-project/skills/
+cp -r skills/_shared skills/sdd-* skills/skill-registry skills/judgment-day skills/go-testing skills/skill-creator skills/branch-pr skills/issue-creation ./your-project/skills/
 ```
 
 **2. Add orchestrator to `.cursorrules`:**

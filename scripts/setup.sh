@@ -193,9 +193,16 @@ install_skills() {
         ok "_shared conventions"
     fi
 
-    # Copy sdd-* + skill-registry
+    # Copy all distributable skills
     local count=0
-    for skill_dir in "$SKILLS_SRC"/sdd-*/ "$SKILLS_SRC"/skill-registry/; do
+    for skill_dir in \
+        "$SKILLS_SRC"/sdd-*/ \
+        "$SKILLS_SRC"/skill-registry/ \
+        "$SKILLS_SRC"/judgment-day/ \
+        "$SKILLS_SRC"/go-testing/ \
+        "$SKILLS_SRC"/skill-creator/ \
+        "$SKILLS_SRC"/branch-pr/ \
+        "$SKILLS_SRC"/issue-creation/; do
         [ -d "$skill_dir" ] || continue
         local skill_name
         skill_name=$(basename "$skill_dir")
@@ -396,6 +403,15 @@ setup_opencode() {
         fi
         warn "Merge manually: copy agent block from examples/opencode/opencode.${OPENCODE_MODE}.json"
         info "Into: $config_file"
+    fi
+
+    # Install AGENTS.md prompt file for prompt references in config templates
+    local agents_src="$EXAMPLES_DIR/opencode/AGENTS.md"
+    local agents_target="$home/.config/opencode/AGENTS.md"
+    if [ -f "$agents_src" ]; then
+        mkdir -p "$(dirname "$agents_target")"
+        cp "$agents_src" "$agents_target"
+        ok "AGENTS.md installed -> $agents_target"
     fi
 
     # Install background-agents plugin

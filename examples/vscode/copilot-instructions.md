@@ -77,17 +77,18 @@ proposal -> specs --> tasks -> apply -> verify -> archive
 Each phase returns: `status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`.
 
 ### Sub-Agent Launch Pattern
-ALL sub-agent launch prompts MUST include pre-resolved skill references:
-```
-  SKILL: Load `{skill-path}` before starting.
-```
-The ORCHESTRATOR resolves skill paths from the registry ONCE (at session start or first delegation), then passes the exact path to each sub-agent. Sub-agents do NOT search for the skill registry themselves.
+ALL sub-agent launch prompts that involve reading, writing, or reviewing code MUST include pre-resolved **compact rules** from the skill registry.
 
 **Orchestrator skill resolution (do once per session):**
-1. `mem_search(query: "skill-registry", project: "{project}")` → get registry
-2. Cache the skill-name → path mapping for the session
-3. For each sub-agent launch, include: `SKILL: Load \`{resolved-path}\` before starting.`
-4. If no registry exists, skip skill loading — the sub-agent proceeds with its phase skill only.
+1. `mem_search(query: "skill-registry", project: "{project}")` → `mem_get_observation(id)` for full registry content
+2. Fallback: read `.atl/skill-registry.md` if engram is not available
+3. Cache the **Compact Rules** section and the **User Skills** trigger table
+4. If no registry exists, warn and proceed without project-specific standards
+
+For each sub-agent launch:
+1. Match relevant skills by code context and task context
+2. Copy matching compact rule blocks into the prompt as `## Project Standards (auto-resolved)`
+3. Inject them BEFORE the task-specific instructions
 
 ### Sub-Agent Context Protocol
 
@@ -98,7 +99,7 @@ Sub-agents get a fresh context with NO memory. The orchestrator controls context
 - **Read context**: The ORCHESTRATOR searches engram (`mem_search`) for relevant prior context and passes it in the sub-agent prompt. The sub-agent does NOT search engram itself.
 - **Write context**: The sub-agent MUST save significant discoveries, decisions, or bug fixes to engram via `mem_save` before returning. It has the full detail — if it waits for the orchestrator, nuance is lost.
 - **When to include engram write instructions**: Always. Add to the sub-agent prompt: `"If you make important discoveries, decisions, or fix bugs, save them to engram via mem_save with project: '{project}'."`
-- **Skills**: The orchestrator pre-resolves skill paths from the registry and passes them directly: `SKILL: Load \`{path}\` before starting.` Sub-agents do NOT search for the registry themselves.
+- **Skills**: The orchestrator injects compact rules from the registry as `## Project Standards (auto-resolved)`. If that block is missing, sub-agents may fall back to registry lookup or explicit `SKILL: Load` paths.
 
 #### SDD Phases
 

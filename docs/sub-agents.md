@@ -4,7 +4,7 @@ Reference documentation for the SDD phase sub-agents and skill system. For quick
 
 ## SDD Phase Sub-Agents
 
-Each sub-agent is a SKILL.md file — pure Markdown instructions that any AI assistant can follow. Sub-agents discover and load skills on their own — each SKILL.md includes a Step 1 for loading the [skill registry](#skill-registry), so the orchestrator does not need to pre-resolve skill paths.
+Each sub-agent is a SKILL.md file — pure Markdown instructions that any AI assistant can follow. The preferred path is for the orchestrator to pre-resolve relevant skills from the registry and inject compact rules into each sub-agent prompt. Sub-agents still support registry/path fallback for backward compatibility.
 
 | Sub-Agent | Skill File | What It Does |
 |-----------|-----------|-------------|
@@ -18,6 +18,11 @@ Each sub-agent is a SKILL.md file — pure Markdown instructions that any AI ass
 | **Verifier** | `sdd-verify/SKILL.md` | Validates implementation against specs with real test execution. v2.0: spec compliance matrix |
 | **Archiver** | `sdd-archive/SKILL.md` | Merges delta specs into main specs, moves to archive |
 | **Skill Registry** | `skill-registry/SKILL.md` | Scans user skills + project conventions, writes `.atl/skill-registry.md` |
+| **Judgment Day** | `judgment-day/SKILL.md` | Runs dual adversarial review with two blind judges and a fix loop |
+| **Go Testing** | `go-testing/SKILL.md` | Shared conventions for Go tests, including Bubbletea and teatest patterns |
+| **Skill Creator** | `skill-creator/SKILL.md` | Creates new reusable skills following the project skill spec |
+| **Branch + PR** | `branch-pr/SKILL.md` | Branches changes and opens pull requests with repo conventions |
+| **Issue Creation** | `issue-creation/SKILL.md` | Creates GitHub issues with the repo's structured templates |
 
 ### Sub-Agent Result Contract
 
@@ -31,6 +36,7 @@ Each sub-agent must return a structured envelope with these fields:
 | `artifacts` | List of artifact keys/paths written |
 | `next_recommended` | The next SDD phase to run, or "none" |
 | `risks` | Risks discovered, or "None" |
+| `skill_resolution` | `injected`, `fallback-registry`, `fallback-path`, or `none` |
 
 Example:
 
@@ -46,7 +52,7 @@ Example:
 
 ### Sub-Agent Context Protocol
 
-Sub-agents start with a **fresh context** — they don't know what user skills exist (React, TDD, Playwright, etc.). Each sub-agent's SKILL.md includes a Step 1 that loads the skill registry, so sub-agents discover and load relevant skills on their own. The orchestrator does NOT need to pre-resolve skill paths.
+Sub-agents start with a **fresh context**. The orchestrator is responsible for resolving the skill registry once, matching relevant skills, and injecting compact rules into the sub-agent prompt as `## Project Standards (auto-resolved)`. If that block is missing, sub-agents fall back to registry lookup or explicit `SKILL: Load` paths.
 
 Sub-agents are also instructed to save discoveries, decisions, and bug fixes to engram automatically (non-SDD sub-agents) or via the mandatory persist step (SDD phases).
 
@@ -61,6 +67,7 @@ All skills reference three shared convention files in `skills/_shared/`. Critica
 | `persistence-contract.md` | Mode resolution rules, sub-agent context protocol, skill registry loading protocol |
 | `engram-convention.md` | Supplementary reference for deterministic naming (`sdd/{change-name}/{artifact-type}`) and two-step recovery. Critical calls are inlined in skills. |
 | `openspec-convention.md` | Filesystem paths for each artifact, directory structure, config.yaml reference, and archive layout |
+| `skill-resolver.md` | Universal protocol for delegators to inject compact rules from the skill registry |
 
 **Why inline + shared:**
 - **Sub-agents fail multi-hop chains** — A 3-hop read chain (skill → convention file → actual instructions) breaks non-Claude models. Inlining the critical calls eliminates this.
@@ -71,20 +78,22 @@ All skills reference three shared convention files in `skills/_shared/`. Critica
 
 ## Skill Registry
 
-Sub-agents start with a **fresh context** — they don't know what user skills exist (React, TDD, Playwright, etc.). The skill registry solves this — and sub-agents discover it on their own.
+Sub-agents start with a **fresh context** — they do not know what user skills exist (React, TDD, Playwright, etc.). The skill registry solves this, and the orchestrator uses it to inject compact rules before each delegation.
 
 **How it works:**
 1. `/sdd-init` or `/skill-registry` scans your installed skills and project conventions
 2. Writes `.atl/skill-registry.md` in the project root (mode-independent, always created)
 3. If engram is available, also saves to engram (cross-session bonus)
-4. Each sub-agent's SKILL.md includes a Step 1 that loads the skill registry — sub-agents discover skills on their own
-5. Discovery order: engram (`mem_search(query: "skill-registry", project: "{project}")`) → fallback `.atl/skill-registry.md`
-6. If a sub-agent finds relevant skills (React, Go testing, Angular, etc.), it loads and follows them automatically
+4. The orchestrator reads the registry once and caches the **Compact Rules** section plus the trigger table
+5. For each delegation, the orchestrator injects matching rules as `## Project Standards (auto-resolved)`
+6. Fallback order if standards were not injected: `mem_search(query: "skill-registry", project: "{project}")` → `.atl/skill-registry.md` → explicit `SKILL: Load` paths
+7. Delegations report `skill_resolution` so the orchestrator can detect and repair cache loss after compaction
 
-**Sub-agents are self-sufficient for skill discovery. The orchestrator does NOT need to pre-resolve skill paths.**
+**Preferred path:** the orchestrator pre-resolves compact rules. Sub-agent self-loading is only a compatibility fallback.
 
 **What it contains:**
 - User skills table: trigger → skill name → path (e.g., "React components" → `react-19` → `~/.claude/skills/react-19/SKILL.md`)
+- Compact rules blocks: short, pre-digested instructions that delegators paste directly into sub-agent prompts
 - Project conventions found: `agents.md`, `CLAUDE.md`, `.cursorrules`, etc.
 
 **When to update:** Run `/skill-registry` after installing or removing skills.
